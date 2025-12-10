@@ -40,3 +40,15 @@ brew install avrdude esptool dfu-util libusb                 # macOS
 # Windows (PowerShell as Admin)
 winget install python
 pip install pyserial pyusb esptool
+graph LR
+A[CLI Interface] --> B[Hardware Abstraction Layer]
+B --> C[ATmega Module]
+B --> D[ESP Module]
+B --> E[Tron Module]
+B --> F[ARM Module]
+C --> G[avrdude Core]
+D --> H[esptool Core]
+E --> I[Custom UART Protocol]
+F --> J[OpenOCD/DFU]
+B --> K[USB Auto-Detection Engine]
+B --> L[Debug & Logging System]
