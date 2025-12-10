@@ -5,8 +5,8 @@ Tron Shell - Universal Microcontroller Flashing Tool
 ![Python](https://img.shields.io/badge/Python-3.7%2B-blue)
 ![Platforms](https://img.shields.io/badge/Platforms-ATmega%2FESP%2FTron%2FARM-blue)
 
-Engineered by ROOTCASTLE ENGINEERING INNOVATION**  
-*Precision tools for embedded systems mastery*
+Engineered by ROOTCASTLE ENGINEERING INNOVATION 
+
 
 Overview
 Tron Shell is a next-generation command-line interface for flashing firmware to microcontrollers. Designed for professional embedded engineers and hobbyists alike, it provides unified access to multiple hardware platforms with advanced features like automatic USB detection, bootloader management, and comprehensive debugging capabilities.
@@ -29,7 +29,6 @@ Supported Hardware Platforms
 | **Tron Series**| TR-100, TR-200, TRX             | .hex, .bin        | Custom UART Boot   |
 | **ARM**        | STM32F1/F4, SAMD21, NRF52       | .hex, .bin, .uf2  | DFU, SWD           |
 
-Installation
  
  Prerequisites
 ```bash
