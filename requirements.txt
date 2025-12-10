@@ -1,0 +1,6 @@
+pyserial==3.5
+pyusb==1.2.1
+esptool==4.5.1
+intelhex==2.3.0
+pyyaml==6.0
+colorama==0.4.6

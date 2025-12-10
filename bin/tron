@@ -1,0 +1,262 @@
+#!/usr/bin/env python3
+"""
+Tron Shell - Universal Microcontroller Flashing Tool
+Engineered by ROOTCASTLE ENGINEERING INNOVATION
+"""
+
+import argparse
+import sys
+import os
+import logging
+import yaml
+from colorama import init, Fore, Style
+
+# Initialize colorama
+init(autoreset=True)
+
+# Import core modules
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from tron_core import (
+    PlatformATmega,
+    PlatformESP,
+    PlatformTron,
+    PlatformARM,
+    USBDetector,
+    BootloaderManager,
+    DebugLogger
+)
+from tron_core.utils import (
+    validate_firmware_file,
+    calculate_checksum,
+    get_default_config_path
+)
+
+class TronShell:
+    def __init__(self):
+        self.config = self.load_config()
+        self.debug_logger = DebugLogger(self.config.get('debug', {}))
+        self.usb_detector = USBDetector(self.config.get('usb_rules', []))
+        self.platforms = {
+            'atmega328p': PlatformATmega,
+            'atmega2560': PlatformATmega,
+            'esp32': PlatformESP,
+            'esp8266': PlatformESP,
+            'tron100': PlatformTron,
+            'tron200': PlatformTron,
+            'stm32f4': PlatformARM,
+            'samd21': PlatformARM
+        }
+    
+    def load_config(self):
+        """Load configuration from YAML file"""
+        config_path = get_default_config_path()
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as f:
+                return yaml.safe_load(f)
+        return {
+            'default_baud': 115200,
+            'timeout': 5.0,
+            'usb_rules': [],
+            'debug': {
+                'protocol_log': False,
+                'verbose_errors': True,
+                'keep_temp_files': False
+            }
+        }
+    
+    def parse_args(self):
+        """Parse command line arguments"""
+        parser = argparse.ArgumentParser(
+            description=f"{Fore.CYAN}Tron Shell v2.1{Style.RESET_ALL} - Universal Microcontroller Programming Tool\n"
+                        f"Engineered by {Fore.GREEN}ROOTCASTLE ENGINEERING INNOVATION{Style.RESET_ALL}",
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            epilog=f"{Fore.YELLOW}Example Usage:{Style.RESET_ALL}\n"
+                   f"  tron flash -p esp32 -f firmware.bin --auto\n"
+                   f"  tron bootloader -p atmega328p --burn\n"
+                   f"  tron detect --interactive"
+        )
+        
+        subparsers = parser.add_subparsers(dest='command', required=True)
+        
+        # Flash command
+        flash_parser = subparsers.add_parser('flash', help='Flash firmware to device')
+        flash_parser.add_argument('-p', '--platform', required=True, 
+                                choices=self.platforms.keys(), help='Target platform')
+        flash_parser.add_argument('-f', '--file', required=True, help='Firmware file (.hex/.bin/.elf)')
+        flash_parser.add_argument('-c', '--port', help='Serial port (e.g., /dev/ttyUSB0)')
+        flash_parser.add_argument('--baud', type=int, default=self.config['default_baud'],
+                                help=f"Baud rate (default: {self.config['default_baud']})")
+        flash_parser.add_argument('--verify', action='store_true', help='Verify after flashing')
+        flash_parser.add_argument('--auto', action='store_true', help='Auto-detect USB device')
+        flash_parser.add_argument('--bootloader', action='store_true', help='Enter bootloader mode first')
+        flash_parser.add_argument('-d', '--debug', type=int, choices=[1,2,3,4], 
+                                help='Debug mode level (1-4)')
+        
+        # Bootloader command
+        bootloader_parser = subparsers.add_parser('bootloader', help='Bootloader management')
+        bootloader_parser.add_argument('-p', '--platform', required=True, 
+                                     choices=self.platforms.keys(), help='Target platform')
+        bootloader_parser.add_argument('--burn', action='store_true', help='Burn bootloader')
+        bootloader_parser.add_argument('--enter', action='store_true', help='Enter bootloader mode')
+        bootloader_parser.add_argument('--verify', action='store_true', help='Verify bootloader')
+        bootloader_parser.add_argument('--fuse-set', help='Fuse settings (ATmega only)')
+        bootloader_parser.add_argument('--auto', action='store_true', help='Auto-detect USB device')
+        bootloader_parser.add_argument('-d', '--debug', type=int, choices=[1,2,3,4], 
+                                     help='Debug mode level (1-4)')
+        
+        # Detect command
+        detect_parser = subparsers.add_parser('detect', help='Detect connected devices')
+        detect_parser.add_argument('--verbose', action='store_true', help='Show detailed info')
+        detect_parser.add_argument('--interactive', action='store_true', help='Interactive selection mode')
+        
+        # Verify command
+        verify_parser = subparsers.add_parser('verify', help='Verify firmware integrity')
+        verify_parser.add_argument('-p', '--platform', required=True, 
+                                 choices=self.platforms.keys(), help='Target platform')
+        verify_parser.add_argument('-f', '--file', required=True, help='Firmware file to verify')
+        verify_parser.add_argument('--checksum', choices=['CRC32', 'SHA256'], default='SHA256',
+                                 help='Checksum algorithm (default: SHA256)')
+        verify_parser.add_argument('-c', '--port', help='Serial port')
+        verify_parser.add_argument('--auto', action='store_true', help='Auto-detect USB device')
+        
+        return parser.parse_args()
+    
+    def run(self):
+        """Main execution flow"""
+        args = self.parse_args()
+        
+        # Setup debug logging if requested
+        if hasattr(args, 'debug') and args.debug:
+            self.debug_logger.set_level(args.debug)
+        
+        try:
+            if args.command == 'detect':
+                self.handle_detect(args)
+            elif args.command == 'bootloader':
+                self.handle_bootloader(args)
+            elif args.command in ['flash', 'verify']:
+                self.handle_flash_verify(args)
+            else:
+                print(f"{Fore.RED}Unknown command:{Style.RESET_ALL} {args.command}")
+                sys.exit(1)
+                
+        except Exception as e:
+            if self.config['debug'].get('verbose_errors', True):
+                self.debug_logger.log_exception(e)
+            print(f"{Fore.RED}[CRITICAL ERROR]{Style.RESET_ALL} {str(e)}")
+            sys.exit(1)
+    
+    def handle_detect(self, args):
+        """Handle device detection"""
+        devices = self.usb_detector.detect_devices(verbose=args.verbose)
+        
+        if not devices:
+            print(f"{Fore.YELLOW}No compatible devices found.{Style.RESET_ALL}")
+            return
+        
+        if args.interactive:
+            print(f"\n{Fore.CYAN}Interactive Device Selection:{Style.RESET_ALL}")
+            for i, dev in enumerate(devices):
+                print(f"{i+1}. {dev['description']} on {dev['port']} "
+                      f"(VID:{dev['vendor_id']} PID:{dev['product_id']})")
+            
+            try:
+                choice = int(input(f"\n{Fore.GREEN}Select device (1-{len(devices)}): {Style.RESET_ALL}"))
+                if 1 <= choice <= len(devices):
+                    dev = devices[choice-1]
+                    print(f"\n{Fore.GREEN}Selected:{Style.RESET_ALL} {dev['description']} at {dev['port']}")
+                else:
+                    print(f"{Fore.RED}Invalid selection.{Style.RESET_ALL}")
+            except ValueError:
+                print(f"{Fore.RED}Invalid input.{Style.RESET_ALL}")
+        else:
+            print(f"\n{Fore.CYAN}Detected Devices:{Style.RESET_ALL}")
+            for dev in devices:
+                print(f"- {dev['description']} on {dev['port']}")
+    
+    def handle_bootloader(self, args):
+        """Handle bootloader operations"""
+        port = self.get_port(args)
+        platform = self.platforms[args.platform](port, args.baud if hasattr(args, 'baud') else None, self.debug_logger)
+        bl_manager = BootloaderManager(platform, self.debug_logger)
+        
+        if args.enter:
+            print(f"{Fore.CYAN}Entering bootloader mode for {args.platform}...{Style.RESET_ALL}")
+            bl_manager.enter_bootloader()
+        elif args.burn:
+            print(f"{Fore.CYAN}Burning bootloader to {args.platform}...{Style.RESET_ALL}")
+            bl_manager.burn_bootloader(args.fuse_set)
+        elif args.verify:
+            print(f"{Fore.CYAN}Verifying bootloader on {args.platform}...{Style.RESET_ALL}")
+            bl_manager.verify_bootloader()
+        else:
+            print(f"{Fore.YELLOW}No bootloader action specified. Use --enter, --burn, or --verify{Style.RESET_ALL}")
+    
+    def handle_flash_verify(self, args):
+        """Handle flashing and verification"""
+        port = self.get_port(args)
+        validate_firmware_file(args.file)
+        
+        # Initialize platform
+        platform = self.platforms[args.platform](port, args.baud, self.debug_logger)
+        
+        if args.command == 'flash':
+            if args.bootloader:
+                print(f"{Fore.CYAN}Entering bootloader mode...{Style.RESET_ALL}")
+                BootloaderManager(platform, self.debug_logger).enter_bootloader()
+            
+            print(f"{Fore.GREEN}Flashing {args.file} to {args.platform} at {port}...{Style.RESET_ALL}")
+            platform.flash_firmware(args.file)
+            
+            if args.verify:
+                print(f"{Fore.CYAN}Verifying flash integrity...{Style.RESET_ALL}")
+                platform.verify_firmware(args.file)
+                print(f"{Fore.GREEN}Verification successful!{Style.RESET_ALL}")
+        
+        elif args.command == 'verify':
+            print(f"{Fore.CYAN}Verifying firmware integrity...{Style.RESET_ALL}")
+            checksum = calculate_checksum(args.file, args.checksum)
+            print(f"{Fore.GREEN}Local {args.checksum}: {checksum}{Style.RESET_ALL}")
+            
+            device_checksum = platform.get_device_checksum(args.checksum)
+            print(f"{Fore.GREEN}Device {args.checksum}: {device_checksum}{Style.RESET_ALL}")
+            
+            if checksum == device_checksum:
+                print(f"{Fore.GREEN}Firmware verification PASSED!{Style.RESET_ALL}")
+            else:
+                print(f"{Fore.RED}Firmware verification FAILED!{Style.RESET_ALL}")
+                sys.exit(1)
+    
+    def get_port(self, args):
+        """Get port with auto-detection fallback"""
+        if args.auto:
+            detected = self.usb_detector.detect_by_platform(args.platform)
+            if detected:
+                print(f"{Fore.GREEN}Auto-detected device:{Style.RESET_ALL} {detected['description']} at {detected['port']}")
+                return detected['port']
+            else:
+                raise RuntimeError(f"No {args.platform} device found for auto-detection. Connect device or specify port manually.")
+        
+        if not hasattr(args, 'port') or not args.port:
+            raise ValueError("Port required. Use --port or --auto for auto-detection.")
+        
+        return args.port
+
+def main():
+    print(f"""
+{Fore.CYAN}████████╗███████╗ ██████╗ ███╗   ██╗ ██████╗ ███████╗
+╚══██╔══╝██╔════╝██╔═══██╗████╗  ██║██╔════╝ ██╔════╝
+   ██║   █████╗  ██║   ██║██╔██╗ ██║██║  ███╗█████╗  
+   ██║   ██╔══╝  ██║   ██║██║╚██╗██║██║   ██║██╔══╝  
+   ██║   ███████╗╚██████╔╝██║ ╚████║╚██████╔╝███████╗
+   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝ ╚══════╝
+{Style.RESET_ALL}
+{Fore.GREEN}Universal Microcontroller Flashing Tool v2.1{Style.RESET_ALL}
+Engineered by {Fore.YELLOW}ROOTCASTLE ENGINEERING INNOVATION{Style.RESET_ALL}
+""")
+    
+    shell = TronShell()
+    shell.run()
+
+if __name__ == "__main__":
+    main()
