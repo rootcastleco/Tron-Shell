@@ -16,6 +16,16 @@ from . import __version__
 console = Console()
 
 
+def print_header():
+    """Print the Tron Shell header with company and founder information."""
+    console.print("\n")
+    console.print("[bold cyan]" + "=" * 70 + "[/bold cyan]")
+    console.print("[bold yellow]ROOTCASTLE ENGINEERING INNOVATION[/bold yellow]")
+    console.print("[bold white]Tron Shell - Universal Microcontroller Flashing Tool[/bold white]")
+    console.print("[bold cyan]Founder: Batuhan AYRIBAS[/bold cyan]")
+    console.print("[bold cyan]" + "=" * 70 + "[/bold cyan]\n")
+
+
 @click.group(invoke_without_command=True)
 @click.option("--version", is_flag=True, help="Show version and exit")
 @click.pass_context
@@ -31,6 +41,7 @@ def cli(ctx, version):
         ctx.exit()
 
     if ctx.invoked_subcommand is None:
+        print_header()
         click.echo(ctx.get_help())
 
 
@@ -38,7 +49,8 @@ def cli(ctx, version):
 @click.option("-v", "--verbose", is_flag=True, help="Enable verbose output")
 def list(verbose):
     """List all connected USB devices."""
-    console.print("\n[bold cyan]Scanning for USB devices...[/bold cyan]\n")
+    print_header()
+    console.print("[bold cyan]Scanning for USB devices...[/bold cyan]\n")
 
     devices = USBDetector.detect_devices()
 
@@ -96,6 +108,7 @@ def flash(firmware, port, board, baud, platform, verbose, verify, reset):
       tron flash app.bin --platform esp32 --baud 460800
     """
     try:
+        print_header()
         # Auto-detect port if not specified
         if not port:
             console.print("[cyan]Auto-detecting device...[/cyan]")
@@ -183,6 +196,7 @@ def reset(port, method):
 
       tron reset COM3 --method 1200baud
     """
+    print_header()
     console.print(f"[cyan]Resetting device on {port} using {method} method...[/cyan]")
 
     success = BootloaderManager.reset_device(port, method)
@@ -209,6 +223,7 @@ def info(port, verbose):
 
       tron info COM3 --verbose
     """
+    print_header()
     device = USBDetector.find_device_by_port(port)
 
     if not device:
@@ -240,6 +255,7 @@ def info(port, verbose):
 @cli.command()
 def platforms():
     """List supported platforms and their details."""
+    print_header()
     console.print("\n[bold cyan]Supported Platforms[/bold cyan]\n")
 
     table = Table(show_header=True, header_style="bold magenta")
