@@ -1,0 +1,65 @@
+# Tron Shell USB Detection Rules
+# Engineered by ROOTCASTLE ENGINEERING INNOVATION
+
+default_baud: 115200
+timeout: 5.0
+
+usb_rules:
+  # Arduino Uno (ATmega328P)
+  - vendor_id: "2341"
+    product_id: "0043"
+    platform: "atmega328p"
+    description: "Arduino Uno"
+    description_keywords: ["arduino", "uno", "2341:0043"]
+    path_contains:
+      linux: "ttyacm"
+      windows: "com"
+      darwin: "cu.usbmodem"
+
+  # Arduino Mega 2560
+  - vendor_id: "2341"
+    product_id: "0010"
+    platform: "atmega2560"
+    description: "Arduino Mega 2560"
+    description_keywords: ["arduino", "mega", "2341:0010"]
+
+  # ESP32 DevKit
+  - vendor_id: "10c4"
+    product_id: "ea60"
+    platform: "esp32"
+    description: "ESP32 DevKit"
+    description_keywords: ["silicon labs", "cp210", "esp32"]
+
+  # ESP8266 (NodeMCU)
+  - vendor_id: "1a86"
+    product_id: "7523"
+    platform: "esp8266"
+    description: "NodeMCU ESP8266"
+    description_keywords: ["usb serial", "ch340", "nodemcu"]
+
+  # Tron TR-200 Series
+  - vendor_id: "16c0"
+    product_id: "0483"
+    platform: "tron200"
+    description: "Tron TR-200 Controller"
+    description_keywords: ["tron", "tr-200", "rootcastle"]
+
+  # STM32F4 Discovery
+  - vendor_id: "0483"
+    product_id: "374b"
+    platform: "stm32f4"
+    description: "STM32F4 Discovery"
+    description_keywords: ["stm32", "stlink", "dfu"]
+
+  # Generic CDC-ACM devices
+  - platform: "tron100"
+    description: "Generic Tron Device"
+    description_keywords: ["tron", "rootcastle"]
+    path_contains:
+      linux: "ttyacm"
+      darwin: "cu.usbmodem"
+
+debug:
+  protocol_log: true
+  verbose_errors: true
+  keep_temp_files: false
