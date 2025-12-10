@@ -1,7 +1,7 @@
 Tron Shell - Universal Microcontroller Flashing Tool
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Rootcastle Engineering](https://img.shields.io/badge/Engineered%20by-ROOTCASTLE%20ENGINEERING%20INNOVATION-brightgreen.svg)](https://rootcastle.engineering)
+[![Rootcastle Engineering](https://img.shields.io/badge/Engineered%20by-ROOTCASTLE%20ENGINEERING%20INNOVATION-brightgreen.svg)](https://rootcastle.com)
 ![Python](https://img.shields.io/badge/Python-3.7%2B-blue)
 ![Platforms](https://img.shields.io/badge/Platforms-ATmega%2FESP%2FTron%2FARM-blue)
 
