@@ -5,7 +5,7 @@ Platform-specific firmware flashing implementations.
 import subprocess
 import sys
 from abc import ABC, abstractmethod
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from pathlib import Path
 
 
@@ -48,7 +48,7 @@ class PlatformFlasher(ABC):
         """
         pass
     
-    def _run_command(self, cmd: List[str]) -> tuple[bool, str]:
+    def _run_command(self, cmd: List[str]) -> Tuple[bool, str]:
         """
         Run a shell command and return result.
         

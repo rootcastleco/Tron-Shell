@@ -6,7 +6,6 @@ import sys
 import click
 from rich.console import Console
 from rich.table import Table
-from rich import print as rprint
 from pathlib import Path
 
 from .usb_detector import USBDetector
